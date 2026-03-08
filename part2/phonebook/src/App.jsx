@@ -1,80 +1,73 @@
-import { useState, useEffect } from 'react'
-import Filter from './components/Filter'
-import PersonForm from './components/PersonForm'
-import Persons from './components/Persons'
-import Notification from './components/Notification'
-import personService from './services/persons'
+import { useState, useEffect } from "react"
+import personService from "./services/persons"
+import Filter from "./components/Filter"
+import PersonForm from "./components/PersonForm"
+import Persons from "./components/Persons"
+import Notification from "./components/Notification"
 
 const App = () => {
   const [persons, setPersons] = useState([])
-  const [newName, setNewName] = useState('')
-  const [newNumber, setNewNumber] = useState('')
-  const [filter, setFilter] = useState('')
+  const [newName, setNewName] = useState("")
+  const [newNumber, setNewNumber] = useState("")
+  const [filter, setFilter] = useState("")
   const [message, setMessage] = useState(null)
+  const [errorMessage, setErrorMessage] = useState(null)
+
+  const [messageType, setMessageType] = useState("success")
 
   useEffect(() => {
-    personService.getAll().then(initialPersons => {
-      setPersons(initialPersons)
-    })
+    personService.getAll().then(initialPersons => setPersons(initialPersons))
   }, [])
 
-  const showMessage = (text, type = 'success') => {
-    setMessage({ text, type })
-    setTimeout(() => setMessage(null), 4000)
-  }
+  const handleNameChange = (e) => setNewName(e.target.value)
+  const handleNumberChange = (e) => setNewNumber(e.target.value)
+  const handleFilterChange = (e) => setFilter(e.target.value)
 
-  const addPerson = (event) => {
-    event.preventDefault()
+  const addPerson = (e) => {
+    e.preventDefault()
     const existing = persons.find(p => p.name === newName)
 
     if (existing) {
-      if (window.confirm(`${newName} is already added, replace the old number?`)) {
+      if (window.confirm(`${newName} is already added. Replace the old number?`)) {
         const updatedPerson = { ...existing, number: newNumber }
-
-        personService
-          .update(existing.id, updatedPerson)
-          .then(returnedPerson => {
-            setPersons(persons.map(p =>
-              p.id !== existing.id ? p : returnedPerson
-            ))
-            showMessage(`Updated ${newName}`)
+        personService.update(existing.id, updatedPerson)
+          .then(returned => {
+            setPersons(persons.map(p => p.id !== existing.id ? p : returned))
+            setMessage(`Updated ${returned.name}`)
+            setMessageType("success")
+            setTimeout(() => setMessage(null), 5000)
           })
           .catch(() => {
-            showMessage(
-              `Information of ${newName} has already been removed from server`,
-              'error'
-            )
+            setMessage(`Information of ${existing.name} has already been removed`)
+            setMessageType("error")
+            setTimeout(() => setMessage(null), 5000)
             setPersons(persons.filter(p => p.id !== existing.id))
           })
       }
-    } else {
-      personService
-        .create({ name: newName, number: newNumber })
-        .then(returnedPerson => {
-          setPersons(persons.concat(returnedPerson))
-          showMessage(`Added ${newName}`)
-        })
+      return
     }
 
+    const newPerson = { name: newName, number: newNumber }
+personService
+  .create(newPerson)
+  .then(returnedPerson => {
+    setPersons(persons.concat(returnedPerson))
     setNewName('')
     setNewNumber('')
+  })
+  .catch(error => {
+    setErrorMessage(error.response.data.error)
+    setTimeout(() => {
+      setErrorMessage(null)
+    }, 5000)
+  })
+
   }
 
-  const deletePerson = (id, name) => {
+  const handleDelete = (id, name) => {
     if (window.confirm(`Delete ${name}?`)) {
-      personService
-        .remove(id)
-        .then(() => {
-          setPersons(persons.filter(p => p.id !== id))
-          showMessage(`Deleted ${name}`)
-        })
-        .catch(() => {
-          showMessage(
-            `Information of ${name} has already been removed from server`,
-            'error'
-          )
-          setPersons(persons.filter(p => p.id !== id))
-        })
+      personService.remove(id)
+        .then(() => setPersons(persons.filter(p => p.id !== id)))
     }
   }
 
@@ -85,30 +78,20 @@ const App = () => {
   return (
     <div>
       <h2>Phonebook</h2>
+      {errorMessage && <div style={{ color: 'red' }}>{errorMessage}</div>}
 
-      <Notification message={message} />
-
-      <Filter
-        filter={filter}
-        handleFilterChange={(e) => setFilter(e.target.value)}
-      />
-
-      <h2>Add a new</h2>
-
+      <Notification message={message} type={messageType} />
+      <Filter filter={filter} handleFilterChange={handleFilterChange} />
+      <h3>Add a new</h3>
       <PersonForm
         addPerson={addPerson}
         newName={newName}
-        handleNameChange={(e) => setNewName(e.target.value)}
+        handleNameChange={handleNameChange}
         newNumber={newNumber}
-        handleNumberChange={(e) => setNewNumber(e.target.value)}
+        handleNumberChange={handleNumberChange}
       />
-
-      <h2>Numbers</h2>
-
-      <Persons
-        persons={personsToShow}
-        deletePerson={deletePerson}
-      />
+      <h3>Numbers</h3>
+      <Persons persons={personsToShow} handleDelete={handleDelete} />
     </div>
   )
 }

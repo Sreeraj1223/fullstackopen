@@ -1,10 +1,5 @@
-const PersonForm = ({
-  addPerson,
-  newName,
-  handleNameChange,
-  newNumber,
-  handleNumberChange
-}) => (
+// src/components/PersonForm.jsx
+const PersonForm = ({ addPerson, newName, handleNameChange, newNumber, handleNumberChange }) => (
   <form onSubmit={addPerson}>
     <div>
       name: <input value={newName} onChange={handleNameChange} />
